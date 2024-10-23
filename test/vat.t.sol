@@ -27,7 +27,7 @@ interface Hevm {
 
 contract TestVat is Vat {
     uint256 constant ONE = 10 ** 27;
-    function mint(address usr, uint wad) public {
+    function testMint(address usr, uint wad) public {
         dai[usr] += wad * ONE;
         debt += wad * ONE;
     }
