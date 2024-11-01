@@ -25,9 +25,7 @@ interface IVatDaiFlashLender {
      * @param amount The amount of tokens lent. [rad]
      * @param data Arbitrary data structure, intended to contain user-defined parameters.
      */
-    function vatDaiFlashLoan(
-        IVatDaiFlashBorrower receiver,
-        uint256 amount,
-        bytes calldata data
-    ) external returns (bool);
+    function vatDaiFlashLoan(IVatDaiFlashBorrower receiver, uint256 amount, bytes calldata data)
+        external
+        returns (bool);
 }

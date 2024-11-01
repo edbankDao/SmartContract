@@ -60,18 +60,9 @@ contract DSToken is DSAuth {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 wad
-    ) public stoppable returns (bool) {
-        if (
-            src != msg.sender && allowance[src][msg.sender] != type(uint256).max
-        ) {
-            require(
-                allowance[src][msg.sender] >= wad,
-                "ds-token-insufficient-approval"
-            );
+    function transferFrom(address src, address dst, uint256 wad) public stoppable returns (bool) {
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
+            require(allowance[src][msg.sender] >= wad, "ds-token-insufficient-approval");
             allowance[src][msg.sender] -= wad;
         }
 
@@ -110,13 +101,8 @@ contract DSToken is DSAuth {
     }
 
     function burn(address guy, uint256 wad) public auth stoppable {
-        if (
-            guy != msg.sender && allowance[guy][msg.sender] != type(uint256).max
-        ) {
-            require(
-                allowance[guy][msg.sender] >= wad,
-                "ds-token-insufficient-approval"
-            );
+        if (guy != msg.sender && allowance[guy][msg.sender] != type(uint256).max) {
+            require(allowance[guy][msg.sender] >= wad, "ds-token-insufficient-approval");
             allowance[guy][msg.sender] -= wad;
         }
 

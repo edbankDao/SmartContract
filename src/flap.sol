@@ -25,11 +25,12 @@ pragma solidity >=0.6.12;
 // New deployments of this contract will need to include custom events (TO DO).
 
 interface VatLike {
-    function move(address, address, uint) external;
+    function move(address, address, uint256) external;
 }
+
 interface GemLike {
-    function move(address, address, uint) external;
-    function burn(address, uint) external;
+    function move(address, address, uint256) external;
+    function burn(address, uint256) external;
 }
 
 /*
@@ -44,13 +45,16 @@ interface GemLike {
 
 contract Flapper {
     // --- Auth ---
-    mapping(address => uint) public wards;
+    mapping(address => uint256) public wards;
+
     function rely(address usr) external auth {
         wards[usr] = 1;
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
     }
+
     modifier auth() {
         require(wards[msg.sender] == 1, "Flapper/not-authorized");
         _;
@@ -65,13 +69,13 @@ contract Flapper {
         uint48 end; // auction expiry time     [unix epoch time]
     }
 
-    mapping(uint => Bid) public bids;
+    mapping(uint256 => Bid) public bids;
 
     VatLike public vat; // CDP Engine
     GemLike public gem;
 
-    uint256 constant ONE = 1.00E18;
-    uint256 public beg = 1.05E18; // 5% minimum bid increase
+    uint256 constant ONE = 1.0e18;
+    uint256 public beg = 1.05e18; // 5% minimum bid increase
     uint48 public ttl = 3 hours; // 3 hours bid duration         [seconds]
     uint48 public tau = 2 days; // 2 days total auction length  [seconds]
     uint256 public kicks = 0;
@@ -94,18 +98,21 @@ contract Flapper {
     function add(uint48 x, uint48 y) internal pure returns (uint48 z) {
         require((z = x + y) >= x);
     }
-    function add256(uint x, uint y) internal pure returns (uint z) {
+
+    function add256(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
     }
-    function sub(uint x, uint y) internal pure returns (uint z) {
+
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x);
     }
-    function mul(uint x, uint y) internal pure returns (uint z) {
+
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
 
     // --- Admin ---
-    function file(bytes32 what, uint data) external auth {
+    function file(bytes32 what, uint256 data) external auth {
         if (what == "beg") beg = data;
         else if (what == "ttl") ttl = uint48(data);
         else if (what == "tau") tau = uint48(data);
@@ -114,7 +121,7 @@ contract Flapper {
     }
 
     // --- Auction ---
-    function kick(uint lot, uint bid) external auth returns (uint id) {
+    function kick(uint256 lot, uint256 bid) external auth returns (uint256 id) {
         require(live == 1, "Flapper/not-live");
         require(kicks < type(uint256).max, "Flapper/overflow");
         fill = add256(fill, lot);
@@ -130,26 +137,22 @@ contract Flapper {
 
         emit Kick(id, lot, bid);
     }
-    function tick(uint id) external {
+
+    function tick(uint256 id) external {
         require(bids[id].end < block.timestamp, "Flapper/not-finished");
         require(bids[id].tic == 0, "Flapper/bid-already-placed");
         bids[id].end = add(uint48(block.timestamp), tau);
     }
-    function tend(uint id, uint lot, uint bid) external {
+
+    function tend(uint256 id, uint256 lot, uint256 bid) external {
         require(live == 1, "Flapper/not-live");
         require(bids[id].guy != address(0), "Flapper/guy-not-set");
-        require(
-            bids[id].tic > block.timestamp || bids[id].tic == 0,
-            "Flapper/already-finished-tic"
-        );
+        require(bids[id].tic > block.timestamp || bids[id].tic == 0, "Flapper/already-finished-tic");
         require(bids[id].end > block.timestamp, "Flapper/already-finished-end");
 
         require(lot == bids[id].lot, "Flapper/lot-not-matching");
         require(bid > bids[id].bid, "Flapper/bid-not-higher");
-        require(
-            mul(bid, ONE) >= mul(beg, bids[id].bid),
-            "Flapper/insufficient-increase"
-        );
+        require(mul(bid, ONE) >= mul(beg, bids[id].bid), "Flapper/insufficient-increase");
 
         if (msg.sender != bids[id].guy) {
             gem.move(msg.sender, bids[id].guy, bids[id].bid);
@@ -160,12 +163,11 @@ contract Flapper {
         bids[id].bid = bid;
         bids[id].tic = add(uint48(block.timestamp), ttl);
     }
-    function deal(uint id) external {
+
+    function deal(uint256 id) external {
         require(live == 1, "Flapper/not-live");
         require(
-            bids[id].tic != 0 &&
-                (bids[id].tic < block.timestamp ||
-                    bids[id].end < block.timestamp),
+            bids[id].tic != 0 && (bids[id].tic < block.timestamp || bids[id].end < block.timestamp),
             "Flapper/not-finished"
         );
         uint256 lot = bids[id].lot;
@@ -175,11 +177,12 @@ contract Flapper {
         fill = sub(fill, lot);
     }
 
-    function cage(uint rad) external auth {
+    function cage(uint256 rad) external auth {
         live = 0;
         vat.move(address(this), msg.sender, rad);
     }
-    function yank(uint id) external {
+
+    function yank(uint256 id) external {
         require(live == 0, "Flapper/still-live");
         require(bids[id].guy != address(0), "Flapper/guy-not-set");
         gem.move(address(this), bids[id].guy, bids[id].bid);

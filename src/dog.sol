@@ -21,18 +21,11 @@ pragma solidity >=0.6.12;
 
 interface ClipperLike {
     function ilk() external view returns (bytes32);
-    function kick(
-        uint256 tab,
-        uint256 lot,
-        address usr,
-        address kpr
-    ) external returns (uint256);
+    function kick(uint256 tab, uint256 lot, address usr, address kpr) external returns (uint256);
 }
 
 interface VatLike {
-    function ilks(
-        bytes32
-    )
+    function ilks(bytes32)
         external
         view
         returns (
@@ -40,18 +33,17 @@ interface VatLike {
             uint256 rate, // [ray]
             uint256 spot, // [ray]
             uint256 line, // [rad]
-            uint256 dust // [rad]
-        );
-    function urns(
-        bytes32,
-        address
-    )
+            uint256 dust
+        ); // [rad]
+
+    function urns(bytes32, address)
         external
         view
         returns (
             uint256 ink, // [wad]
-            uint256 art // [wad]
-        );
+            uint256 art
+        ); // [wad]
+
     function grab(bytes32, address, address, address, int256, int256) external;
     function hope(address) external;
     function nope(address) external;
@@ -64,14 +56,17 @@ interface VowLike {
 contract Dog {
     // --- Auth ---
     mapping(address => uint256) public wards;
+
     function rely(address usr) external auth {
         wards[usr] = 1;
         emit Rely(usr);
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
         emit Deny(usr);
     }
+
     modifier auth() {
         require(wards[msg.sender] == 1, "Dog/not-authorized");
         _;
@@ -129,12 +124,15 @@ contract Dog {
     function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x <= y ? x : y;
     }
+
     function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
     }
+
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x);
     }
+
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
@@ -145,27 +143,32 @@ contract Dog {
         else revert("Dog/file-unrecognized-param");
         emit File(what, data);
     }
+
     function file(bytes32 what, uint256 data) external auth {
         if (what == "Hole") Hole = data;
         else revert("Dog/file-unrecognized-param");
         emit File(what, data);
     }
+
     function file(bytes32 ilk, bytes32 what, uint256 data) external auth {
         if (what == "chop") {
             require(data >= WAD, "Dog/file-chop-lt-WAD");
             ilks[ilk].chop = data;
-        } else if (what == "hole") ilks[ilk].hole = data;
-        else revert("Dog/file-unrecognized-param");
+        } else if (what == "hole") {
+            ilks[ilk].hole = data;
+        } else {
+            revert("Dog/file-unrecognized-param");
+        }
         emit File(ilk, what, data);
     }
+
     function file(bytes32 ilk, bytes32 what, address clip) external auth {
         if (what == "clip") {
-            require(
-                ilk == ClipperLike(clip).ilk(),
-                "Dog/file-ilk-neq-clip.ilk"
-            );
+            require(ilk == ClipperLike(clip).ilk(), "Dog/file-ilk-neq-clip.ilk");
             ilks[ilk].clip = clip;
-        } else revert("Dog/file-unrecognized-param");
+        } else {
+            revert("Dog/file-unrecognized-param");
+        }
         emit File(ilk, what, clip);
     }
 
@@ -187,11 +190,7 @@ contract Dog {
     // have too little collateral to be interesting to Keepers (debt taken from Vault < ilk.dust),
     // in which case the function reverts. Please refer to the code and comments within if
     // more detail is desired.
-    function bark(
-        bytes32 ilk,
-        address urn,
-        address kpr
-    ) external returns (uint256 id) {
+    function bark(bytes32 ilk, address urn, address kpr) external returns (uint256 id) {
         require(live == 1, "Dog/not-live");
 
         (uint256 ink, uint256 art) = vat.urns(ilk, urn);
@@ -201,19 +200,13 @@ contract Dog {
         uint256 dust;
         {
             uint256 spot;
-            (, rate, spot, , dust) = vat.ilks(ilk);
-            require(
-                spot > 0 && mul(ink, spot) < mul(art, rate),
-                "Dog/not-unsafe"
-            );
+            (, rate, spot,, dust) = vat.ilks(ilk);
+            require(spot > 0 && mul(ink, spot) < mul(art, rate), "Dog/not-unsafe");
 
             // Get the minimum value between:
             // 1) Remaining space in the general Hole
             // 2) Remaining space in the collateral hole
-            require(
-                Hole > Dirt && milk.hole > milk.dirt,
-                "Dog/liquidation-limit-hit"
-            );
+            require(Hole > Dirt && milk.hole > milk.dirt, "Dog/liquidation-limit-hit");
             uint256 room = min(Hole - Dirt, milk.hole - milk.dirt);
 
             // uint256.max()/(RAD*WAD) = 115,792,089,237,316
@@ -230,10 +223,7 @@ contract Dog {
                     dart = art;
                 } else {
                     // In a partial liquidation, the resulting auction should also be non-dusty.
-                    require(
-                        mul(dart, rate) >= dust,
-                        "Dog/dusty-auction-from-partial-liquidation"
-                    );
+                    require(mul(dart, rate) >= dust, "Dog/dusty-auction-from-partial-liquidation");
                 }
             }
         }
@@ -243,14 +233,7 @@ contract Dog {
         require(dink > 0, "Dog/null-auction");
         require(dart <= 2 ** 255 && dink <= 2 ** 255, "Dog/overflow");
 
-        vat.grab(
-            ilk,
-            urn,
-            milk.clip,
-            address(vow),
-            -int256(dink),
-            -int256(dart)
-        );
+        vat.grab(ilk, urn, milk.clip, address(vow), -int256(dink), -int256(dart));
 
         uint256 due = mul(dart, rate);
         vow.fess(due);
@@ -262,12 +245,7 @@ contract Dog {
             Dirt = add(Dirt, tab);
             ilks[ilk].dirt = add(milk.dirt, tab);
 
-            id = ClipperLike(milk.clip).kick({
-                tab: tab,
-                lot: dink,
-                usr: urn,
-                kpr: kpr
-            });
+            id = ClipperLike(milk.clip).kick({tab: tab, lot: dink, usr: urn, kpr: kpr});
         }
 
         emit Bark(ilk, urn, dink, dart, due, milk.clip, id);

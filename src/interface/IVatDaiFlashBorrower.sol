@@ -25,10 +25,7 @@ interface IVatDaiFlashBorrower {
      * @param data Arbitrary data structure, intended to contain user-defined parameters.
      * @return The keccak256 hash of "IVatDaiFlashLoanReceiver.onVatDaiFlashLoan"
      */
-    function onVatDaiFlashLoan(
-        address initiator,
-        uint256 amount,
-        uint256 fee,
-        bytes calldata data
-    ) external returns (bytes32);
+    function onVatDaiFlashLoan(address initiator, uint256 amount, uint256 fee, bytes calldata data)
+        external
+        returns (bytes32);
 }

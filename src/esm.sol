@@ -58,12 +58,7 @@ contract ESM {
     event Deny(address indexed usr);
     event DenyProxy(address indexed base, address indexed pause);
 
-    constructor(
-        address gem_,
-        address end_,
-        address proxy_,
-        uint256 min_
-    ) public {
+    constructor(address gem_, address end_, address proxy_, uint256 min_) public {
         gem = GemLike(gem_);
         end = EndLike(end_);
         proxy = proxy_;
@@ -90,11 +85,13 @@ contract ESM {
 
         emit Rely(usr);
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
 
         emit Deny(usr);
     }
+
     modifier auth() {
         require(wards[msg.sender] == 1, "ESM/not-authorized");
         _;
@@ -153,10 +150,7 @@ contract ESM {
         sum[msg.sender] = add(sum[msg.sender], wad);
         Sum = add(Sum, wad);
 
-        require(
-            gem.transferFrom(msg.sender, address(this), wad),
-            "ESM/transfer-failed"
-        );
+        require(gem.transferFrom(msg.sender, address(this), wad), "ESM/transfer-failed");
         emit Join(msg.sender, wad);
     }
 

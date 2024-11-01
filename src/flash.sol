@@ -48,11 +48,14 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         wards[usr] = 1;
         emit Rely(usr);
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
         emit Deny(usr);
     }
+
     mapping(address => uint256) public wards;
+
     modifier auth() {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
         _;
@@ -66,26 +69,15 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     uint256 public max; // Maximum borrowable Dai  [wad]
     uint256 private locked; // Reentrancy guard
 
-    bytes32 public constant CALLBACK_SUCCESS =
-        keccak256("ERC3156FlashBorrower.onFlashLoan");
-    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI =
-        keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
 
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, uint256 data);
-    event FlashLoan(
-        address indexed receiver,
-        address token,
-        uint256 amount,
-        uint256 fee
-    );
-    event VatDaiFlashLoan(
-        address indexed receiver,
-        uint256 amount,
-        uint256 fee
-    );
+    event FlashLoan(address indexed receiver, address token, uint256 amount, uint256 fee);
+    event VatDaiFlashLoan(address indexed receiver, uint256 amount, uint256 fee);
 
     modifier lock() {
         require(locked == 0, "DssFlash/reentrancy-guard");
@@ -110,6 +102,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     // --- Math ---
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
+
     function _mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
@@ -119,14 +112,14 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         if (what == "max") {
             // Add an upper limit of 10^27 DAI to avoid breaking technical assumptions of DAI << 2^256 - 1
             require((max = data) <= RAD, "DssFlash/ceiling-too-high");
-        } else revert("DssFlash/file-unrecognized-param");
+        } else {
+            revert("DssFlash/file-unrecognized-param");
+        }
         emit File(what, data);
     }
 
     // --- ERC 3156 Spec ---
-    function maxFlashLoan(
-        address token
-    ) external view override returns (uint256) {
+    function maxFlashLoan(address token) external view override returns (uint256) {
         if (token == address(dai) && locked == 0) {
             return max;
         } else {
@@ -134,22 +127,19 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         }
     }
 
-    function flashFee(
-        address token,
-        uint256 amount
-    ) external view override returns (uint256) {
+    function flashFee(address token, uint256 amount) external view override returns (uint256) {
         amount;
         require(token == address(dai), "DssFlash/token-unsupported");
 
         return 0;
     }
 
-    function flashLoan(
-        IERC3156FlashBorrower receiver,
-        address token,
-        uint256 amount,
-        bytes calldata data
-    ) external override lock returns (bool) {
+    function flashLoan(IERC3156FlashBorrower receiver, address token, uint256 amount, bytes calldata data)
+        external
+        override
+        lock
+        returns (bool)
+    {
         require(token == address(dai), "DssFlash/token-unsupported");
         require(amount <= max, "DssFlash/ceiling-exceeded");
         require(vat.live() == 1, "DssFlash/vat-not-live");
@@ -162,9 +152,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         emit FlashLoan(address(receiver), token, amount, 0);
 
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, 0, data) ==
-                CALLBACK_SUCCESS,
-            "DssFlash/callback-failed"
+            receiver.onFlashLoan(msg.sender, token, amount, 0, data) == CALLBACK_SUCCESS, "DssFlash/callback-failed"
         );
 
         dai.transferFrom(address(receiver), address(this), amount);
@@ -188,8 +176,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         emit VatDaiFlashLoan(address(receiver), amount, 0);
 
         require(
-            receiver.onVatDaiFlashLoan(msg.sender, amount, 0, data) ==
-                CALLBACK_SUCCESS_VAT_DAI,
+            receiver.onVatDaiFlashLoan(msg.sender, amount, 0, data) == CALLBACK_SUCCESS_VAT_DAI,
             "DssFlash/callback-failed"
         );
 

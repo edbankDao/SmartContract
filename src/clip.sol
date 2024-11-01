@@ -22,9 +22,7 @@ pragma solidity >=0.6.12;
 interface VatLike {
     function move(address, address, uint256) external;
     function flux(bytes32, address, address, uint256) external;
-    function ilks(
-        bytes32
-    ) external returns (uint256, uint256, uint256, uint256, uint256);
+    function ilks(bytes32) external returns (uint256, uint256, uint256, uint256, uint256);
     function suck(address, address, uint256) external;
 }
 
@@ -53,14 +51,17 @@ interface AbacusLike {
 contract Clipper {
     // --- Auth ---
     mapping(address => uint256) public wards;
+
     function rely(address usr) external auth {
         wards[usr] = 1;
         emit Rely(usr);
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
         emit Deny(usr);
     }
+
     modifier auth() {
         require(wards[msg.sender] == 1, "Clipper/not-authorized");
         _;
@@ -93,6 +94,7 @@ contract Clipper {
         uint96 tic; // Auction start time
         uint256 top; // Starting price     [ray]
     }
+
     mapping(uint256 => Sale) public sales;
 
     uint256 internal locked;
@@ -121,13 +123,7 @@ contract Clipper {
         uint256 coin
     );
     event Take(
-        uint256 indexed id,
-        uint256 max,
-        uint256 price,
-        uint256 owe,
-        uint256 tab,
-        uint256 lot,
-        address indexed usr
+        uint256 indexed id, uint256 max, uint256 price, uint256 owe, uint256 tab, uint256 lot, address indexed usr
     );
     event Redo(
         uint256 indexed id,
@@ -142,12 +138,7 @@ contract Clipper {
     event Yank(uint256 id);
 
     // --- Init ---
-    constructor(
-        address vat_,
-        address spotter_,
-        address dog_,
-        bytes32 ilk_
-    ) public {
+    constructor(address vat_, address spotter_, address dog_, bytes32 ilk_) public {
         vat = VatLike(vat_);
         spotter = SpotterLike(spotter_);
         dog = DogLike(dog_);
@@ -172,20 +163,29 @@ contract Clipper {
 
     // --- Administration ---
     function file(bytes32 what, uint256 data) external auth lock {
-        if (what == "buf") buf = data;
-        else if (what == "tail")
-            tail = data; // Time elapsed before auction reset
-        else if (what == "cusp")
-            cusp = data; // Percentage drop before auction reset
-        else if (what == "chip")
-            chip = uint64(data); // Percentage of tab to incentivize (max: 2^64 - 1 => 18.xxx WAD = 18xx%)
-        else if (what == "tip")
-            tip = uint192(data); // Flat fee to incentivize keepers (max: 2^192 - 1 => 6.277T RAD)
-        else if (what == "stopped")
-            stopped = data; // Set breaker (0, 1, 2, or 3)
-        else revert("Clipper/file-unrecognized-param");
+        if (what == "buf") {
+            buf = data;
+        } else if (what == "tail") {
+            tail = data;
+        } // Time elapsed before auction reset
+        else if (what == "cusp") {
+            cusp = data;
+        } // Percentage drop before auction reset
+        else if (what == "chip") {
+            chip = uint64(data);
+        } // Percentage of tab to incentivize (max: 2^64 - 1 => 18.xxx WAD = 18xx%)
+        else if (what == "tip") {
+            tip = uint192(data);
+        } // Flat fee to incentivize keepers (max: 2^192 - 1 => 6.277T RAD)
+        else if (what == "stopped") {
+            stopped = data;
+        } // Set breaker (0, 1, 2, or 3)
+        else {
+            revert("Clipper/file-unrecognized-param");
+        }
         emit File(what, data);
     }
+
     function file(bytes32 what, address data) external auth lock {
         if (what == "spotter") spotter = SpotterLike(data);
         else if (what == "dog") dog = DogLike(data);
@@ -203,21 +203,27 @@ contract Clipper {
     function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x <= y ? x : y;
     }
+
     function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
     }
+
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x);
     }
+
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
+
     function wmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = mul(x, y) / WAD;
     }
+
     function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = mul(x, y) / RAY;
     }
+
     function rdiv(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = mul(x, RAY) / y;
     }
@@ -229,7 +235,7 @@ contract Clipper {
     // if mat has changed since the last poke, the resulting value will be
     // incorrect.
     function getFeedPrice() internal returns (uint256 feedPrice) {
-        (PipLike pip, ) = spotter.ilks(ilk);
+        (PipLike pip,) = spotter.ilks(ilk);
         (bytes32 val, bool has) = pip.peek();
         require(has, "Clipper/invalid-price");
         feedPrice = rdiv(mul(uint256(val), BLN), spotter.par());
@@ -298,7 +304,7 @@ contract Clipper {
 
         // Check that auction needs reset
         // and compute current price [ray]
-        (bool done, ) = status(tic, top);
+        (bool done,) = status(tic, top);
         require(done, "Clipper/cannot-reset");
 
         uint256 tab = sales[id].tab;
@@ -409,9 +415,7 @@ contract Clipper {
             // extremely careful we don't allow to do it to the two
             // contracts which the Clipper needs to be authorized
             DogLike dog_ = dog;
-            if (
-                data.length > 0 && who != address(vat) && who != address(dog_)
-            ) {
+            if (data.length > 0 && who != address(vat) && who != address(dog_)) {
                 ClipperCallee(who).clipperCall(msg.sender, owe, slice, data);
             }
 
@@ -457,13 +461,7 @@ contract Clipper {
     }
 
     // Externally returns boolean for if an auction needs a redo and also the current price
-    function getStatus(
-        uint256 id
-    )
-        external
-        view
-        returns (bool needsRedo, uint256 price, uint256 lot, uint256 tab)
-    {
+    function getStatus(uint256 id) external view returns (bool needsRedo, uint256 price, uint256 lot, uint256 tab) {
         // Read auction data
         address usr = sales[id].usr;
         uint96 tic = sales[id].tic;
@@ -477,17 +475,14 @@ contract Clipper {
     }
 
     // Internally returns boolean for if an auction needs a redo
-    function status(
-        uint96 tic,
-        uint256 top
-    ) internal view returns (bool done, uint256 price) {
+    function status(uint96 tic, uint256 top) internal view returns (bool done, uint256 price) {
         price = calc.price(top, sub(block.timestamp, tic));
         done = (sub(block.timestamp, tic) > tail || rdiv(price, top) < cusp);
     }
 
     // Public function to update the cached dust*chop value.
     function upchost() external {
-        (, , , , uint256 _dust) = VatLike(vat).ilks(ilk);
+        (,,,, uint256 _dust) = VatLike(vat).ilks(ilk);
         chost = wmul(_dust, dog.chop(ilk));
     }
 

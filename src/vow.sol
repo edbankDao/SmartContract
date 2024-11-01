@@ -24,20 +24,20 @@ pragma solidity >=0.6.12;
 // New deployments of this contract will need to include custom events (TO DO).
 
 interface FlopLike {
-    function kick(address gal, uint lot, uint bid) external returns (uint);
+    function kick(address gal, uint256 lot, uint256 bid) external returns (uint256);
     function cage() external;
-    function live() external returns (uint);
+    function live() external returns (uint256);
 }
 
 interface FlapLike {
-    function kick(uint lot, uint bid) external returns (uint);
-    function cage(uint) external;
-    function live() external returns (uint);
+    function kick(uint256 lot, uint256 bid) external returns (uint256);
+    function cage(uint256) external;
+    function live() external returns (uint256);
 }
 
 interface VatLike {
-    function dai(address) external view returns (uint);
-    function sin(address) external view returns (uint);
+    function dai(address) external view returns (uint256);
+    function sin(address) external view returns (uint256);
     function heal(uint256) external;
     function hope(address) external;
     function nope(address) external;
@@ -45,14 +45,17 @@ interface VatLike {
 
 contract Vow {
     // --- Auth ---
-    mapping(address => uint) public wards;
+    mapping(address => uint256) public wards;
+
     function rely(address usr) external auth {
         require(live == 1, "Vow/not-live");
         wards[usr] = 1;
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
     }
+
     modifier auth() {
         require(wards[msg.sender] == 1, "Vow/not-authorized");
         _;
@@ -87,18 +90,20 @@ contract Vow {
     }
 
     // --- Math ---
-    function add(uint x, uint y) internal pure returns (uint z) {
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
     }
-    function sub(uint x, uint y) internal pure returns (uint z) {
+
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x);
     }
-    function min(uint x, uint y) internal pure returns (uint z) {
+
+    function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
         return x <= y ? x : y;
     }
 
     // --- Administration ---
-    function file(bytes32 what, uint data) external auth {
+    function file(bytes32 what, uint256 data) external auth {
         if (what == "wait") wait = data;
         else if (what == "bump") bump = data;
         else if (what == "sump") sump = data;
@@ -112,32 +117,34 @@ contract Vow {
             vat.nope(address(flapper));
             flapper = FlapLike(data);
             vat.hope(data);
-        } else if (what == "flopper") flopper = FlopLike(data);
-        else revert("Vow/file-unrecognized-param");
+        } else if (what == "flopper") {
+            flopper = FlopLike(data);
+        } else {
+            revert("Vow/file-unrecognized-param");
+        }
     }
 
     // Push to debt-queue
-    function fess(uint tab) external auth {
+    function fess(uint256 tab) external auth {
         sin[block.timestamp] = add(sin[block.timestamp], tab);
         Sin = add(Sin, tab);
     }
     // Pop from debt-queue
-    function flog(uint era) external {
+
+    function flog(uint256 era) external {
         require(add(era, wait) <= block.timestamp, "Vow/wait-not-finished");
         Sin = sub(Sin, sin[era]);
         sin[era] = 0;
     }
 
     // Debt settlement
-    function heal(uint rad) external {
+    function heal(uint256 rad) external {
         require(rad <= vat.dai(address(this)), "Vow/insufficient-surplus");
-        require(
-            rad <= sub(sub(vat.sin(address(this)), Sin), Ash),
-            "Vow/insufficient-debt"
-        );
+        require(rad <= sub(sub(vat.sin(address(this)), Sin), Ash), "Vow/insufficient-debt");
         vat.heal(rad);
     }
-    function kiss(uint rad) external {
+
+    function kiss(uint256 rad) external {
         require(rad <= Ash, "Vow/not-enough-ash");
         require(rad <= vat.dai(address(this)), "Vow/insufficient-surplus");
         Ash = sub(Ash, rad);
@@ -145,26 +152,17 @@ contract Vow {
     }
 
     // Debt auction
-    function flop() external returns (uint id) {
-        require(
-            sump <= sub(sub(vat.sin(address(this)), Sin), Ash),
-            "Vow/insufficient-debt"
-        );
+    function flop() external returns (uint256 id) {
+        require(sump <= sub(sub(vat.sin(address(this)), Sin), Ash), "Vow/insufficient-debt");
         require(vat.dai(address(this)) == 0, "Vow/surplus-not-zero");
         Ash = add(Ash, sump);
         id = flopper.kick(address(this), dump, sump);
     }
     // Surplus auction
-    function flap() external returns (uint id) {
-        require(
-            vat.dai(address(this)) >=
-                add(add(vat.sin(address(this)), bump), hump),
-            "Vow/insufficient-surplus"
-        );
-        require(
-            sub(sub(vat.sin(address(this)), Sin), Ash) == 0,
-            "Vow/debt-not-zero"
-        );
+
+    function flap() external returns (uint256 id) {
+        require(vat.dai(address(this)) >= add(add(vat.sin(address(this)), bump), hump), "Vow/insufficient-surplus");
+        require(sub(sub(vat.sin(address(this)), Sin), Ash) == 0, "Vow/debt-not-zero");
         id = flapper.kick(bump, 0);
     }
 

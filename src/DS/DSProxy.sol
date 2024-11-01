@@ -17,15 +17,13 @@ abstract contract DSProxy is DSAuth, DSNote {
     receive() external payable {}
 
     // use the proxy to execute calldata _data on contract _code
-    function execute(
-        bytes memory _code,
-        bytes memory _data
-    ) public payable virtual returns (address target, bytes32 response);
+    function execute(bytes memory _code, bytes memory _data)
+        public
+        payable
+        virtual
+        returns (address target, bytes32 response);
 
-    function execute(
-        address _target,
-        bytes memory _data
-    ) public payable virtual returns (bytes32 response);
+    function execute(address _target, bytes memory _data) public payable virtual returns (bytes32 response);
 
     //set new cache
     function setCache(address _cacheAddr) public payable virtual returns (bool);
