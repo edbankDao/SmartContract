@@ -58,7 +58,12 @@ contract ESM {
     event Deny(address indexed usr);
     event DenyProxy(address indexed base, address indexed pause);
 
-    constructor(address gem_, address end_, address proxy_, uint256 min_) public {
+    constructor(
+        address gem_,
+        address end_,
+        address proxy_,
+        uint256 min_
+    ) public {
         gem = GemLike(gem_);
         end = EndLike(end_);
         proxy = proxy_;
@@ -150,7 +155,10 @@ contract ESM {
         sum[msg.sender] = add(sum[msg.sender], wad);
         Sum = add(Sum, wad);
 
-        require(gem.transferFrom(msg.sender, address(this), wad), "ESM/transfer-failed");
+        require(
+            gem.transferFrom(msg.sender, address(this), wad),
+            "ESM/transfer-failed"
+        );
         emit Join(msg.sender, wad);
     }
 

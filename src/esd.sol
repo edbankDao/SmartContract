@@ -66,13 +66,16 @@ contract Esd {
     // --- EIP712 niceties ---
     bytes32 public DOMAIN_SEPARATOR;
     // bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)");
-    bytes32 public constant PERMIT_TYPEHASH = 0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
+    bytes32 public constant PERMIT_TYPEHASH =
+        0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
 
     constructor(uint256 chainId_) {
         wards[msg.sender] = 1;
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
                 keccak256(bytes(name)),
                 keccak256(bytes(version)),
                 chainId_,
@@ -86,10 +89,19 @@ contract Esd {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 wad
+    ) public returns (bool) {
         require(balanceOf[src] >= wad, "Esd/insufficient-balance");
-        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
-            require(allowance[src][msg.sender] >= wad, "Esd/insufficient-allowance");
+        if (
+            src != msg.sender && allowance[src][msg.sender] != type(uint256).max
+        ) {
+            require(
+                allowance[src][msg.sender] >= wad,
+                "Esd/insufficient-allowance"
+            );
             allowance[src][msg.sender] = sub(allowance[src][msg.sender], wad);
         }
         balanceOf[src] = sub(balanceOf[src], wad);
@@ -106,8 +118,13 @@ contract Esd {
 
     function burn(address usr, uint256 wad) external {
         require(balanceOf[usr] >= wad, "Esd/insufficient-balance");
-        if (usr != msg.sender && allowance[usr][msg.sender] != type(uint256).max) {
-            require(allowance[usr][msg.sender] >= wad, "Esd/insufficient-allowance");
+        if (
+            usr != msg.sender && allowance[usr][msg.sender] != type(uint256).max
+        ) {
+            require(
+                allowance[usr][msg.sender] >= wad,
+                "Esd/insufficient-allowance"
+            );
             allowance[usr][msg.sender] = sub(allowance[usr][msg.sender], wad);
         }
         balanceOf[usr] = sub(balanceOf[usr], wad);
@@ -149,7 +166,16 @@ contract Esd {
             abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
-                keccak256(abi.encode(PERMIT_TYPEHASH, holder, spender, nonce, expiry, allowed))
+                keccak256(
+                    abi.encode(
+                        PERMIT_TYPEHASH,
+                        holder,
+                        spender,
+                        nonce,
+                        expiry,
+                        allowed
+                    )
+                )
             )
         );
 
