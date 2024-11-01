@@ -58,12 +58,7 @@ contract ESM {
     event Deny(address indexed usr);
     event DenyProxy(address indexed base, address indexed pause);
 
-    constructor(
-        address gem_,
-        address end_,
-        address proxy_,
-        uint256 min_
-    ) public {
+    constructor(address gem_, address end_, address proxy_, uint256 min_) {
         gem = GemLike(gem_);
         end = EndLike(end_);
         proxy = proxy_;

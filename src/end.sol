@@ -104,126 +104,6 @@ interface SpotLike {
     function cage() external;
 }
 
-interface CureLike {
-    function tell() external view returns (uint256);
-    function cage() external;
-}
-
-/*
-    This is the `End` and it coordinates Global Settlement. This is an
-    involved, stateful process that takes place over nine steps.
-
-    First we freeze the system and lock the prices for each ilk.
-
-    1. `cage()`:
-        - freezes user entrypoints
-        - cancels flop/flap auctions
-        - starts cooldown period
-        - stops pot drips
-
-    2. `cage(ilk)`:
-       - set the cage price for each `ilk`, reading off the price feed
-
-    We must process some system state before it is possible to calculate
-    the final dai / collateral price. In particular, we need to determine
-
-      a. `gap`, the collateral shortfall per collateral type by
-         considering under-collateralised CDPs.
-
-      b. `debt`, the outstanding dai supply after including system
-         surplus / deficit
-
-    We determine (a) by processing all under-collateralised CDPs with
-    `skim`:
-
-    3. `skim(ilk, urn)`:
-       - cancels CDP debt
-       - any excess collateral remains
-       - backing collateral taken
-
-    We determine (b) by processing ongoing dai generating processes,
-    i.e. auctions. We need to ensure that auctions will not generate any
-    further dai income.
-
-    In the two-way auction model (Flipper) this occurs when
-    all auctions are in the reverse (`dent`) phase. There are two ways
-    of ensuring this:
-
-    4a. i) `wait`: set the cooldown period to be at least as long as the
-           longest auction duration, which needs to be determined by the
-           cage administrator.
-
-           This takes a fairly predictable time to occur but with altered
-           auction dynamics due to the now varying price of dai.
-
-       ii) `skip`: cancel all ongoing auctions and seize the collateral.
-
-           This allows for faster processing at the expense of more
-           processing calls. This option allows dai holders to retrieve
-           their collateral faster.
-
-           `skip(ilk, id)`:
-            - cancel individual flip auctions in the `tend` (forward) phase
-            - retrieves collateral and debt (including penalty) to owner's CDP
-            - returns dai to last bidder
-            - `dent` (reverse) phase auctions can continue normally
-
-    Option (i), `wait`, is sufficient (if all auctions were bidded at least
-    once) for processing the system settlement but option (ii), `skip`,
-    will speed it up. Both options are available in this implementation,
-    with `skip` being enabled on a per-auction basis.
-
-    In the case of the Dutch Auctions model (Clipper) they keep recovering
-    debt during the whole lifetime and there isn't a max duration time
-    guaranteed for the auction to end.
-    So the way to ensure the protocol will not receive extra dai income is:
-
-    4b. i) `snip`: cancel all ongoing auctions and seize the collateral.
-
-           `snip(ilk, id)`:
-            - cancel individual running clip auctions
-            - retrieves remaining collateral and debt (including penalty)
-              to owner's CDP
-
-    When a CDP has been processed and has no debt remaining, the
-    remaining collateral can be removed.
-
-    5. `free(ilk)`:
-        - remove collateral from the caller's CDP
-        - owner can call as needed
-
-    After the processing period has elapsed, we enable calculation of
-    the final price for each collateral type.
-
-    6. `thaw()`:
-       - only callable after processing time period elapsed
-       - assumption that all under-collateralised CDPs are processed
-       - fixes the total outstanding supply of dai
-       - may also require extra CDP processing to cover vow surplus
-
-    7. `flow(ilk)`:
-        - calculate the `fix`, the cash price for a given ilk
-        - adjusts the `fix` in the case of deficit / surplus
-
-    At this point we have computed the final price for each collateral
-    type and dai holders can now turn their dai into collateral. Each
-    unit dai can claim a fixed basket of collateral.
-
-    Dai holders must first `pack` some dai into a `bag`. Once packed,
-    dai cannot be unpacked and is not transferrable. More dai can be
-    added to a bag later.
-
-    8. `pack(wad)`:
-        - put some dai into a bag in preparation for `cash`
-
-    Finally, collateral can be obtained with `cash`. The bigger the bag,
-    the more collateral can be released.
-
-    9. `cash(ilk, wad)`:
-        - exchange some dai from your bag for gems from a specific ilk
-        - the number of gems is limited by how big your bag is
-*/
-
 contract End {
     // --- Auth ---
     mapping(address => uint256) public wards;
@@ -249,7 +129,6 @@ contract End {
     VowLike public vow; // Debt Engine
     PotLike public pot;
     SpotLike public spot;
-    CureLike public cure;
 
     uint256 public live; // Active Flag
     uint256 public when; // Time of cage                   [unix epoch time]
@@ -281,14 +160,6 @@ contract End {
         uint256 lot,
         uint256 art
     );
-    event Skip(
-        bytes32 indexed ilk,
-        uint256 indexed id,
-        address indexed usr,
-        uint256 tab,
-        uint256 lot,
-        uint256 art
-    );
     event Skim(
         bytes32 indexed ilk,
         address indexed urn,
@@ -296,13 +167,12 @@ contract End {
         uint256 art
     );
     event Free(bytes32 indexed ilk, address indexed usr, uint256 ink);
-    event Thaw();
     event Flow(bytes32 indexed ilk);
     event Pack(address indexed usr, uint256 wad);
     event Cash(bytes32 indexed ilk, address indexed usr, uint256 wad);
 
     // --- Init ---
-    constructor() public {
+    constructor() {
         wards[msg.sender] = 1;
         live = 1;
         emit Rely(msg.sender);
@@ -345,7 +215,6 @@ contract End {
         else if (what == "vow") vow = VowLike(data);
         else if (what == "pot") pot = PotLike(data);
         else if (what == "spot") spot = SpotLike(data);
-        else if (what == "cure") cure = CureLike(data);
         else revert("End/file-unrecognized-param");
         emit File(what, data);
     }
@@ -367,7 +236,6 @@ contract End {
         vow.cage();
         spot.cage();
         pot.cage();
-        cure.cage();
         emit Cage();
     }
 
@@ -434,15 +302,6 @@ contract End {
         require(ink <= 2 ** 255, "End/overflow");
         vat.grab(ilk, msg.sender, msg.sender, address(vow), -int256(ink), 0);
         emit Free(ilk, msg.sender, ink);
-    }
-
-    function thaw() external {
-        require(live == 0, "End/still-live");
-        require(debt == 0, "End/debt-not-zero");
-        require(vat.dai(address(vow)) == 0, "End/surplus-not-zero");
-        require(block.timestamp >= add(when, wait), "End/wait-not-finished");
-        debt = sub(vat.debt(), cure.tell());
-        emit Thaw();
     }
 
     function flow(bytes32 ilk) external {
