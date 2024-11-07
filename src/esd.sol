@@ -41,7 +41,7 @@ contract Esd {
     }
 
     // --- ERC20 Data ---
-    string public constant name = "Esd Stablecoin";
+    string public constant name = "EDU StableDollar";
     string public constant symbol = "ESD";
     string public constant version = "1";
     uint8 public constant decimals = 18;
