@@ -22,10 +22,7 @@ contract EduOracle {
         (uint128 price, uint128 timeStamp) = priceFeed.getValue(key);
 
         // 타임스탬프가 너무 오래된 경우 에러 처리
-        require(
-            block.timestamp - timeStamp < 300,
-            "EduOracle/timestamp-too-old"
-        );
+        require(block.timestamp - timeStamp < 300, "EduOracle/timestamp-too-old");
 
         if (price == 0) {
             return (0, false);

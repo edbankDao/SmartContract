@@ -24,11 +24,7 @@ pragma solidity >=0.6.12;
 // New deployments of this contract will need to include custom events (TO DO).
 
 interface FlopLike {
-    function kick(
-        address gal,
-        uint256 lot,
-        uint256 bid
-    ) external returns (uint256);
+    function kick(address gal, uint256 lot, uint256 bid) external returns (uint256);
     function cage() external;
     function live() external returns (uint256);
 }
@@ -144,10 +140,7 @@ contract Vow {
     // Debt settlement
     function heal(uint256 rad) external {
         require(rad <= vat.dai(address(this)), "Vow/insufficient-surplus");
-        require(
-            rad <= sub(sub(vat.sin(address(this)), Sin), Ash),
-            "Vow/insufficient-debt"
-        );
+        require(rad <= sub(sub(vat.sin(address(this)), Sin), Ash), "Vow/insufficient-debt");
         vat.heal(rad);
     }
 
@@ -160,10 +153,7 @@ contract Vow {
 
     // Debt auction
     function flop() external returns (uint256 id) {
-        require(
-            sump <= sub(sub(vat.sin(address(this)), Sin), Ash),
-            "Vow/insufficient-debt"
-        );
+        require(sump <= sub(sub(vat.sin(address(this)), Sin), Ash), "Vow/insufficient-debt");
         require(vat.dai(address(this)) == 0, "Vow/surplus-not-zero");
         Ash = add(Ash, sump);
         id = flopper.kick(address(this), dump, sump);
@@ -171,15 +161,8 @@ contract Vow {
     // Surplus auction
 
     function flap() external returns (uint256 id) {
-        require(
-            vat.dai(address(this)) >=
-                add(add(vat.sin(address(this)), bump), hump),
-            "Vow/insufficient-surplus"
-        );
-        require(
-            sub(sub(vat.sin(address(this)), Sin), Ash) == 0,
-            "Vow/debt-not-zero"
-        );
+        require(vat.dai(address(this)) >= add(add(vat.sin(address(this)), bump), hump), "Vow/insufficient-surplus");
+        require(sub(sub(vat.sin(address(this)), Sin), Ash) == 0, "Vow/debt-not-zero");
         id = flapper.kick(bump, 0);
     }
 

@@ -93,10 +93,7 @@ contract LinearDecrease is Abacus {
     //
     // Note the internal call to mul multiples by RAY, thereby ensuring that the rmul calculation
     // which utilizes top and tau (RAY values) is also a RAY value.
-    function price(
-        uint256 top,
-        uint256 dur
-    ) external view override returns (uint256) {
+    function price(uint256 top, uint256 dur) external view override returns (uint256) {
         if (dur >= tau) return 0;
         return rmul(top, mul(tau - dur, RAY) / tau);
     }
@@ -117,10 +114,7 @@ contract StairstepExponentialDecrease is Abacus {
     }
 
     modifier auth() {
-        require(
-            wards[msg.sender] == 1,
-            "StairstepExponentialDecrease/not-authorized"
-        );
+        require(wards[msg.sender] == 1, "StairstepExponentialDecrease/not-authorized");
         _;
     }
 
@@ -145,10 +139,7 @@ contract StairstepExponentialDecrease is Abacus {
     // --- Administration ---
     function file(bytes32 what, uint256 data) external auth {
         if (what == "cut") {
-            require(
-                (cut = data) <= RAY,
-                "StairstepExponentialDecrease/cut-gt-RAY"
-            );
+            require((cut = data) <= RAY, "StairstepExponentialDecrease/cut-gt-RAY");
         } else if (what == "step") {
             step = data;
         } else {
@@ -167,56 +158,29 @@ contract StairstepExponentialDecrease is Abacus {
     }
     // optimized version from dss PR #78
 
-    function rpow(
-        uint256 x,
-        uint256 n,
-        uint256 b
-    ) internal pure returns (uint256 z) {
+    function rpow(uint256 x, uint256 n, uint256 b) internal pure returns (uint256 z) {
         assembly {
             switch n
-            case 0 {
-                z := b
-            }
+            case 0 { z := b }
             default {
                 switch x
-                case 0 {
-                    z := 0
-                }
+                case 0 { z := 0 }
                 default {
                     switch mod(n, 2)
-                    case 0 {
-                        z := b
-                    }
-                    default {
-                        z := x
-                    }
+                    case 0 { z := b }
+                    default { z := x }
                     let half := div(b, 2) // for rounding.
-                    for {
-                        n := div(n, 2)
-                    } n {
-                        n := div(n, 2)
-                    } {
+                    for { n := div(n, 2) } n { n := div(n, 2) } {
                         let xx := mul(x, x)
-                        if shr(128, x) {
-                            revert(0, 0)
-                        }
+                        if shr(128, x) { revert(0, 0) }
                         let xxRound := add(xx, half)
-                        if lt(xxRound, xx) {
-                            revert(0, 0)
-                        }
+                        if lt(xxRound, xx) { revert(0, 0) }
                         x := div(xxRound, b)
                         if mod(n, 2) {
                             let zx := mul(z, x)
-                            if and(
-                                iszero(iszero(x)),
-                                iszero(eq(div(zx, x), z))
-                            ) {
-                                revert(0, 0)
-                            }
+                            if and(iszero(iszero(x)), iszero(eq(div(zx, x), z))) { revert(0, 0) }
                             let zxRound := add(zx, half)
-                            if lt(zxRound, zx) {
-                                revert(0, 0)
-                            }
+                            if lt(zxRound, zx) { revert(0, 0) }
                             z := div(zxRound, b)
                         }
                     }
@@ -235,10 +199,7 @@ contract StairstepExponentialDecrease is Abacus {
     // returns: top * (cut ^ dur)
     //
     //
-    function price(
-        uint256 top,
-        uint256 dur
-    ) external view override returns (uint256) {
+    function price(uint256 top, uint256 dur) external view override returns (uint256) {
         return rmul(top, rpow(cut, dur / step, RAY));
     }
 }
@@ -302,56 +263,29 @@ contract ExponentialDecrease is Abacus {
     }
     // optimized version from dss PR #78
 
-    function rpow(
-        uint256 x,
-        uint256 n,
-        uint256 b
-    ) internal pure returns (uint256 z) {
+    function rpow(uint256 x, uint256 n, uint256 b) internal pure returns (uint256 z) {
         assembly {
             switch n
-            case 0 {
-                z := b
-            }
+            case 0 { z := b }
             default {
                 switch x
-                case 0 {
-                    z := 0
-                }
+                case 0 { z := 0 }
                 default {
                     switch mod(n, 2)
-                    case 0 {
-                        z := b
-                    }
-                    default {
-                        z := x
-                    }
+                    case 0 { z := b }
+                    default { z := x }
                     let half := div(b, 2) // for rounding.
-                    for {
-                        n := div(n, 2)
-                    } n {
-                        n := div(n, 2)
-                    } {
+                    for { n := div(n, 2) } n { n := div(n, 2) } {
                         let xx := mul(x, x)
-                        if shr(128, x) {
-                            revert(0, 0)
-                        }
+                        if shr(128, x) { revert(0, 0) }
                         let xxRound := add(xx, half)
-                        if lt(xxRound, xx) {
-                            revert(0, 0)
-                        }
+                        if lt(xxRound, xx) { revert(0, 0) }
                         x := div(xxRound, b)
                         if mod(n, 2) {
                             let zx := mul(z, x)
-                            if and(
-                                iszero(iszero(x)),
-                                iszero(eq(div(zx, x), z))
-                            ) {
-                                revert(0, 0)
-                            }
+                            if and(iszero(iszero(x)), iszero(eq(div(zx, x), z))) { revert(0, 0) }
                             let zxRound := add(zx, half)
-                            if lt(zxRound, zx) {
-                                revert(0, 0)
-                            }
+                            if lt(zxRound, zx) { revert(0, 0) }
                             z := div(zxRound, b)
                         }
                     }
@@ -368,10 +302,7 @@ contract ExponentialDecrease is Abacus {
     //
     // returns: top * (cut ^ dur)
     //
-    function price(
-        uint256 top,
-        uint256 dur
-    ) external view override returns (uint256) {
+    function price(uint256 top, uint256 dur) external view override returns (uint256) {
         return rmul(top, rpow(cut, dur, RAY));
     }
 }
